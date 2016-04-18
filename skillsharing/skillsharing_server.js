@@ -1,5 +1,6 @@
 var http = require("http");
 var Router = require("./router");
+var Helpers = require("./utils/helpers");
 var ecstatic = require("ecstatic");
 
 var fileServer = ecstatic({root: "./public"});
@@ -10,26 +11,14 @@ http.createServer(function(request, response) {
     fileServer(request, response);
 }).listen(8000);
 
-function respond(response, status, data, type) {
-  response.writeHead(status, {
-    "Content-Type": type || "text/plain"
-  });
-  response.end(data);
-}
-
-function respondJSON(response, status, data) {
-  respond(response, status, JSON.stringify(data),
-          "application/json");
-}
-
 var talks = Object.create(null);
 
 router.add("GET", /^\/talks\/([^\/]+)$/,
            function(request, response, title) {
   if (title in talks)
-    respondJSON(response, 200, talks[title]);
+    Helpers.respondJSON(response, 200, talks[title]);
   else
-    respond(response, 404, "No talk '" + title + "' found");
+    Helpers.respond(response, 404, "No talk '" + title + "' found");
 });
 
 router.add("DELETE", /^\/talks\/([^\/]+)$/,
@@ -38,70 +27,47 @@ router.add("DELETE", /^\/talks\/([^\/]+)$/,
     delete talks[title];
     registerChange(title);
   }
-  respond(response, 204, null);
+  Helpers.respond(response, 204, null);
 });
-
-function readStreamAsJSON(stream, callback) {
-  var data = "";
-  stream.on("data", function(chunk) {
-    data += chunk;
-  });
-  stream.on("end", function() {
-    var result, error;
-    try { result = JSON.parse(data); }
-    catch (e) { error = e; }
-    callback(error, result);
-  });
-  stream.on("error", function(error) {
-    callback(error);
-  });
-}
 
 router.add("PUT", /^\/talks\/([^\/]+)$/,
            function(request, response, title) {
-  readStreamAsJSON(request, function(error, talk) {
+  Helpers.readStreamAsJSON(request, function(error, talk) {
     if (error) {
-      respond(response, 400, error.toString());
+      Helpers.respond(response, 400, error.toString());
     } else if (!talk ||
                typeof talk.presenter != "string" ||
                typeof talk.summary != "string") {
-      respond(response, 400, "Bad talk data");
+      Helpers.respond(response, 400, "Bad talk data");
     } else {
       talks[title] = {title: title,
                       presenter: talk.presenter,
                       summary: talk.summary,
                       comments: []};
       registerChange(title);
-      respond(response, 204, null);
+      Helpers.respond(response, 204, null);
     }
   });
 });
 
 router.add("POST", /^\/talks\/([^\/]+)\/comments$/,
            function(request, response, title) {
-  readStreamAsJSON(request, function(error, comment) {
+  Helpers.readStreamAsJSON(request, function(error, comment) {
     if (error) {
-      respond(response, 400, error.toString());
+      Helpers.respond(response, 400, error.toString());
     } else if (!comment ||
                typeof comment.author != "string" ||
                typeof comment.message != "string") {
-      respond(response, 400, "Bad comment data");
+      Helpers.respond(response, 400, "Bad comment data");
     } else if (title in talks) {
       talks[title].comments.push(comment);
       registerChange(title);
-      respond(response, 204, null);
+      Helpers.respond(response, 204, null);
     } else {
-      respond(response, 404, "No talk '" + title + "' found");
+      Helpers.respond(response, 404, "No talk '" + title + "' found");
     }
   });
 });
-
-function sendTalks(talks, response) {
-  respondJSON(response, 200, {
-    serverTime: Date.now(),
-    talks: talks
-  });
-}
 
 router.add("GET", /^\/talks$/, function(request, response) {
   var query = require("url").parse(request.url, true).query;
@@ -109,15 +75,15 @@ router.add("GET", /^\/talks$/, function(request, response) {
     var list = [];
     for (var title in talks)
       list.push(talks[title]);
-    sendTalks(list, response);
+    Helpers.sendTalks(list, response);
   } else {
     var since = Number(query.changesSince);
     if (isNaN(since)) {
-      respond(response, 400, "Invalid parameter");
+      Helpers.respond(response, 400, "Invalid parameter");
     } else {
       var changed = getChangedTalks(since);
       if (changed.length > 0)
-         sendTalks(changed, response);
+         Helpers.sendTalks(changed, response);
       else
         waitForChanges(since, response);
     }
@@ -133,7 +99,7 @@ function waitForChanges(since, response) {
     var found = waiting.indexOf(waiter);
     if (found > -1) {
       waiting.splice(found, 1);
-      sendTalks([], response);
+      Helpers.sendTalks([], response);
     }
   }, 90 * 1000);
 }
@@ -143,7 +109,7 @@ var changes = [];
 function registerChange(title) {
   changes.push({title: title, time: Date.now()});
   waiting.forEach(function(waiter) {
-    sendTalks(getChangedTalks(waiter.since), waiter.response);
+    Helpers.sendTalks(getChangedTalks(waiter.since), waiter.response);
   });
   waiting = [];
 }
