@@ -10,7 +10,7 @@ var ecstatic = require("ecstatic");
 var fileServer = ecstatic({root: "./public"});
 var router = new Router();
 
-http.createServer(function(request, response) {
+var server = http.createServer(function(request, response) {
   if (!router.resolve(request, response))
     fileServer(request, response);
 }).listen(8000);
@@ -147,3 +147,5 @@ function getChangedTalks(since) {
   }
   return found;
 }
+
+module.exports = server;
