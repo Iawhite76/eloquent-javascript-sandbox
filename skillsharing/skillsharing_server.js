@@ -3,7 +3,8 @@
 var http = require("http");
 var Router = require("./router");
 var Helpers = require("./utils/helpers");
-var Talks = require("./data/talks");
+var Talks = require("./data/Talks");
+var Changes = require("./data/Changes");
 var ecstatic = require("ecstatic");
 
 var fileServer = ecstatic({root: "./public"});
@@ -117,10 +118,8 @@ function waitForChanges(since, response) {
   }, 90 * 1000);
 }
 
-var changes = [];
-
 function registerChange(title) {
-  changes.push({title: title, time: Date.now()});
+  Changes.pushChange({title: title, time: Date.now()});
   waiting.forEach(function(waiter) {
     Helpers.sendTalks(getChangedTalks(waiter.since), waiter.response);
   });
@@ -130,6 +129,7 @@ function registerChange(title) {
 function getChangedTalks(since) {
   var found = [];
   let talks = Talks.getTalks();
+  let changes = Changes.getChanges();
 
   function alreadySeen(title) {
     return found.some(function(f) {return f.title == title;});
