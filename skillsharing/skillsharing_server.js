@@ -1,6 +1,9 @@
+'use strict';
+
 var http = require("http");
 var Router = require("./router");
 var Helpers = require("./utils/helpers");
+var Talks = require("./data/talks");
 var ecstatic = require("ecstatic");
 
 var fileServer = ecstatic({root: "./public"});
@@ -11,10 +14,10 @@ http.createServer(function(request, response) {
     fileServer(request, response);
 }).listen(8000);
 
-var talks = Object.create(null);
-
 router.add("GET", /^\/talks\/([^\/]+)$/,
            function(request, response, title) {
+  let talks = Talks.getTalks();
+
   if (title in talks)
     Helpers.respondJSON(response, 200, talks[title]);
   else
@@ -23,6 +26,8 @@ router.add("GET", /^\/talks\/([^\/]+)$/,
 
 router.add("DELETE", /^\/talks\/([^\/]+)$/,
            function(request, response, title) {
+  let talks = Talks.getTalks();
+
   if (title in talks) {
     delete talks[title];
     registerChange(title);
@@ -40,6 +45,8 @@ router.add("PUT", /^\/talks\/([^\/]+)$/,
                typeof talk.summary != "string") {
       Helpers.respond(response, 400, "Bad talk data");
     } else {
+      let talks = Talks.getTalks();
+
       talks[title] = {title: title,
                       presenter: talk.presenter,
                       summary: talk.summary,
@@ -53,6 +60,8 @@ router.add("PUT", /^\/talks\/([^\/]+)$/,
 router.add("POST", /^\/talks\/([^\/]+)\/comments$/,
            function(request, response, title) {
   Helpers.readStreamAsJSON(request, function(error, comment) {
+    let talks = Talks.getTalks();
+
     if (error) {
       Helpers.respond(response, 400, error.toString());
     } else if (!comment ||
@@ -60,6 +69,8 @@ router.add("POST", /^\/talks\/([^\/]+)\/comments$/,
                typeof comment.message != "string") {
       Helpers.respond(response, 400, "Bad comment data");
     } else if (title in talks) {
+      let talks = Talks.getTalks();
+
       talks[title].comments.push(comment);
       registerChange(title);
       Helpers.respond(response, 204, null);
@@ -70,6 +81,8 @@ router.add("POST", /^\/talks\/([^\/]+)\/comments$/,
 });
 
 router.add("GET", /^\/talks$/, function(request, response) {
+  let talks = Talks.getTalks();
+
   var query = require("url").parse(request.url, true).query;
   if (query.changesSince == null) {
     var list = [];
@@ -116,6 +129,8 @@ function registerChange(title) {
 
 function getChangedTalks(since) {
   var found = [];
+  let talks = Talks.getTalks();
+
   function alreadySeen(title) {
     return found.some(function(f) {return f.title == title;});
   }
