@@ -40,11 +40,23 @@ router.add("PUT", /^\/talks\/([^\/]+)$/,
            function(request, response, title) {
   Helpers.readStreamAsJSON(request, function(error, talk) {
     if (error) {
-      Helpers.respond(response, 400, error.toString());
+      Helpers.respond(response, 400, 
+        JSON.stringify({
+          'ERROR': {
+            message: error.toString()
+          }
+        })
+      );
     } else if (!talk ||
                typeof talk.presenter != "string" ||
                typeof talk.summary != "string") {
-      Helpers.respond(response, 400, "Bad talk data");
+      Helpers.respond(response, 400, 
+        JSON.stringify({
+          'ERROR': {
+            message: 'Bad talk title'
+          }
+        })
+      );
     } else {
       let talks = Talks.getTalks();
 
@@ -53,7 +65,18 @@ router.add("PUT", /^\/talks\/([^\/]+)$/,
                       summary: talk.summary,
                       comments: []};
       registerChange(title);
-      Helpers.respond(response, 204, null);
+
+      Helpers.respond(
+        response, 
+        202, 
+        JSON.stringify({
+          'SUCCESS': {
+            title: title,
+            presenter: talk.presenter,
+            summary: talk.summary
+          }
+        })
+      );
     }
   });
 });
