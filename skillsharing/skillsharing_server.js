@@ -66,16 +66,17 @@ router.add("PUT", /^\/talks\/([^\/]+)$/,
                       comments: []};
       registerChange(title);
 
-      Helpers.respond(
+      Helpers.respondJSON(
         response, 
         202, 
-        JSON.stringify({
+        {
           'SUCCESS': {
             title: title,
             presenter: talk.presenter,
-            summary: talk.summary
+            summary: talk.summary,
+            comments: []
           }
-        })
+        }
       );
     }
   });
